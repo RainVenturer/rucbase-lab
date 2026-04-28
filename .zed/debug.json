@@ -1,0 +1,43 @@
+[
+    {
+        "label": "Debug rmdb",
+        "adapter": "CodeLLDB",
+        "request": "launch",
+        "program": "$ZED_WORKTREE_ROOT/build/bin/rmdb",
+        "args": ["testdb"],
+        "cwd": "$ZED_WORKTREE_ROOT/build",
+        "build": "Build rmdb"
+    },
+    {
+        "label": "Debug disk_manager_test",
+        "adapter": "CodeLLDB",
+        "request": "launch",
+        "program": "$ZED_WORKTREE_ROOT/build/bin/disk_manager_test",
+        "cwd": "$ZED_WORKTREE_ROOT",
+        "build": "Build Lab1 tests"
+    },
+    {
+        "label": "Debug lru_replacer_test",
+        "adapter": "CodeLLDB",
+        "request": "launch",
+        "program": "$ZED_WORKTREE_ROOT/build/bin/lru_replacer_test",
+        "cwd": "$ZED_WORKTREE_ROOT",
+        "build": "Build Lab1 tests"
+    },
+    {
+        "label": "Debug buffer_pool_manager_test",
+        "adapter": "CodeLLDB",
+        "request": "launch",
+        "program": "$ZED_WORKTREE_ROOT/build/bin/buffer_pool_manager_test",
+        "cwd": "$ZED_WORKTREE_ROOT",
+        "build": "Build Lab1 tests"
+    },
+    {
+        "label": "Debug record_manager_test",
+        "adapter": "CodeLLDB",
+        "request": "launch",
+        "program": "$ZED_WORKTREE_ROOT/build/bin/record_manager_test",
+        "cwd": "$ZED_WORKTREE_ROOT",
+        "build": "Build Lab1 tests"
+    }
+]
