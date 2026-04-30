@@ -17,6 +17,7 @@ See the Mulan PSL v2 for more details. */
  * @param file_handle
  */
 RmScan::RmScan(const RmFileHandle* file_handle) : file_handle_(file_handle) {
+    // 初始化file_handle和rid（指向第一个存放了记录的位置）
     rid_ = {.page_no = RM_NO_PAGE, .slot_no = RM_NO_PAGE};
     for (int page_no = RM_FIRST_RECORD_PAGE; page_no < file_handle_->file_hdr_.num_pages; page_no++) {
         auto page_handle = file_handle_->fetch_page_handle(page_no);
@@ -33,6 +34,7 @@ RmScan::RmScan(const RmFileHandle* file_handle) : file_handle_(file_handle) {
  * @brief 找到文件中下一个存放了记录的位置
  */
 void RmScan::next() {
+    // 找到文件中下一个存放了记录的非空闲位置，用rid_来指向这个位置
     if (is_end()) {
         return;
     }
