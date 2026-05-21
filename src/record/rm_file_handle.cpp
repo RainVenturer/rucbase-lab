@@ -27,6 +27,7 @@ std::unique_ptr<RmRecord> RmFileHandle::get_record(const Rid& rid, Context* cont
     }
     auto record = std::make_unique<RmRecord>(file_hdr_.record_size);
     memcpy(record->data, page_handle.get_slot(rid.slot_no), file_hdr_.record_size);
+    // 读不需要标记为dirty
     buffer_pool_manager_->unpin_page(page_handle.page->get_page_id(), false);
     return record;
 }
@@ -45,16 +46,19 @@ Rid RmFileHandle::insert_record(char* buf, Context* context) {
     // 注意考虑插入一条记录后页面已满的情况，需要更新file_hdr_.first_free_page_no
     (void)context;
     RmPageHandle page_handle = create_page_handle();
+    // 找第一个空槽
     int slot_no = Bitmap::first_bit(false, page_handle.bitmap, file_hdr_.num_records_per_page);
+    // 将slot_no位置的bit设置为1，表示被占用
     Bitmap::set(page_handle.bitmap, slot_no);
     memcpy(page_handle.get_slot(slot_no), buf, file_hdr_.record_size);
     page_handle.page_hdr->num_records++;
     Rid rid = {page_handle.page->get_page_id().page_no, slot_no};
     if (page_handle.page_hdr->num_records == file_hdr_.num_records_per_page) {
+        // 如果这次插入后本页满了, 需要更新file_hdr_.first_free_page_no
         file_hdr_.first_free_page_no = page_handle.page_hdr->next_free_page_no;
         page_handle.page_hdr->next_free_page_no = RM_NO_PAGE;
     }
-    buffer_pool_manager_->unpin_page(page_handle.page->get_page_id(), true);
+    buffer_pool_manager_->unpin_page(page_handle.page->get_page_id(), true); // 标记为dirty
     return rid;
 }
 
@@ -66,9 +70,11 @@ Rid RmFileHandle::insert_record(char* buf, Context* context) {
 void RmFileHandle::insert_record(const Rid& rid, char* buf) {
     RmPageHandle page_handle = fetch_page_handle(rid.page_no);
     if (!Bitmap::is_set(page_handle.bitmap, rid.slot_no)) {
+        // 如果这个位置之前是空的, 需要更新page_hdr和bitmap
         Bitmap::set(page_handle.bitmap, rid.slot_no);
         page_handle.page_hdr->num_records++;
     }
+    // 拷贝并置脏
     memcpy(page_handle.get_slot(rid.slot_no), buf, file_hdr_.record_size);
     buffer_pool_manager_->unpin_page(page_handle.page->get_page_id(), true);
 }
@@ -89,9 +95,11 @@ void RmFileHandle::delete_record(const Rid& rid, Context* context) {
         throw RecordNotFoundError(rid.page_no, rid.slot_no);
     }
     bool was_full = (page_handle.page_hdr->num_records == file_hdr_.num_records_per_page);
+    // 清除位图 bit
     Bitmap::reset(page_handle.bitmap, rid.slot_no);
     page_handle.page_hdr->num_records--;
     if (was_full) {
+        // 如果该页之前是满的，需要将其挂回空闲页链表头
         release_page_handle(page_handle);
     }
     buffer_pool_manager_->unpin_page(page_handle.page->get_page_id(), true);

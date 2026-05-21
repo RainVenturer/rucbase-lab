@@ -38,6 +38,7 @@ void RmScan::next() {
     if (is_end()) {
         return;
     }
+    // 从当前rid_的位置开始，继续往后找下一个存放了记录的非空闲位置
     for (int page_no = rid_.page_no; page_no < file_handle_->file_hdr_.num_pages; page_no++) {
         auto page_handle = file_handle_->fetch_page_handle(page_no);
         int curr = (page_no == rid_.page_no) ? rid_.slot_no : -1;
