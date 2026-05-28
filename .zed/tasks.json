@@ -110,5 +110,61 @@
         "show_summary": true,
         "show_command": true,
         "save": "none"
+    },
+    {
+        "label": "Build Lab2 tests",
+        "command": "cmake --build build -j(nproc) --target b_plus_tree_insert_test b_plus_tree_delete_test b_plus_tree_concurrent_test",
+        "cwd": "$ZED_WORKTREE_ROOT",
+        "use_new_terminal": false,
+        "allow_concurrent_runs": false,
+        "reveal": "always",
+        "reveal_target": "dock",
+        "hide": "never",
+        "shell": "system",
+        "show_summary": true,
+        "show_command": true,
+        "save": "all"
+    },
+    {
+        "label": "Run Lab2 insert test",
+        "command": "./build/bin/b_plus_tree_insert_test",
+        "cwd": "$ZED_WORKTREE_ROOT",
+        "use_new_terminal": false,
+        "allow_concurrent_runs": false,
+        "reveal": "always",
+        "reveal_target": "dock",
+        "hide": "never",
+        "shell": "system",
+        "show_summary": true,
+        "show_command": true,
+        "save": "none"
+    },
+    {
+        "label": "Run Lab2 delete test",
+        "command": "./build/bin/b_plus_tree_delete_test",
+        "cwd": "$ZED_WORKTREE_ROOT",
+        "use_new_terminal": false,
+        "allow_concurrent_runs": false,
+        "reveal": "always",
+        "reveal_target": "dock",
+        "hide": "never",
+        "shell": "system",
+        "show_summary": true,
+        "show_command": true,
+        "save": "none"
+    },
+    {
+        "label": "Run Lab2 concurrent test",
+        "command": "./build/bin/b_plus_tree_concurrent_test",
+        "cwd": "$ZED_WORKTREE_ROOT",
+        "use_new_terminal": false,
+        "allow_concurrent_runs": false,
+        "reveal": "always",
+        "reveal_target": "dock",
+        "hide": "never",
+        "shell": "system",
+        "show_summary": true,
+        "show_command": true,
+        "save": "none"
     }
 ]

@@ -10,6 +10,8 @@ See the Mulan PSL v2 for more details. */
 
 #pragma once
 
+#include <mutex>
+
 #include "ix_defs.h"
 #include "transaction/transaction.h"
 

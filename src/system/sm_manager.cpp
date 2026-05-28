@@ -198,7 +198,57 @@ void SmManager::drop_table(const std::string& tab_name, Context* context) {
  * @param {Context*} context
  */
 void SmManager::create_index(const std::string& tab_name, const std::vector<std::string>& col_names, Context* context) {
-    
+    TabMeta &tab = db_.get_table(tab_name);
+    if (tab.is_index(col_names)) {
+        throw IndexExistsError(tab_name, col_names);
+    }
+
+    std::vector<ColMeta> index_cols;
+    int col_tot_len = 0;
+    for (const auto &col_name : col_names) {
+        auto col_it = tab.get_col(col_name);
+        col_it->index = true;
+        index_cols.push_back(*col_it);
+        col_tot_len += col_it->len;
+    }
+
+    // 先更新元数据，再创建索引文件
+    IndexMeta index_meta;
+    index_meta.tab_name = tab_name;
+    index_meta.col_tot_len = col_tot_len;
+    index_meta.col_num = index_cols.size();
+    index_meta.cols = index_cols;
+    tab.indexes.push_back(index_meta);
+
+    ix_manager_->create_index(tab_name, index_cols);
+    std::string index_name = ix_manager_->get_index_name(tab_name, index_cols);
+
+    // 先用临时句柄回填已有记录，避免测试中重复打开同一索引文件
+    auto build_ih = ix_manager_->open_index(tab_name, index_cols);
+    auto fh = fhs_.at(tab_name).get();
+    RmScan scan(fh);
+    Transaction *txn = context ? context->txn_ : nullptr;
+    while (!scan.is_end()) {
+        Rid rid = scan.rid();
+        auto rec = fh->get_record(rid, context);
+        std::vector<char> key_buf(col_tot_len);
+        int offset = 0;
+        for (const auto &col : index_cols) {
+            memcpy(key_buf.data() + offset, rec->data + col.offset, col.len);
+            offset += col.len;
+        }
+        build_ih->insert_entry(key_buf.data(), rid, txn);
+        scan.next();
+    }
+    ix_manager_->close_index(build_ih.get());
+
+    if (context != nullptr) {
+        // 只有在运行时上下文存在时才常驻索引句柄
+        auto ih = ix_manager_->open_index(tab_name, index_cols);
+        ihs_.emplace(index_name, std::move(ih));
+    }
+
+    flush_meta();
 }
 
 /**
@@ -208,7 +258,35 @@ void SmManager::create_index(const std::string& tab_name, const std::vector<std:
  * @param {Context*} context
  */
 void SmManager::drop_index(const std::string& tab_name, const std::vector<std::string>& col_names, Context* context) {
-    
+    (void)context;
+    TabMeta &tab = db_.get_table(tab_name);
+    if (!tab.is_index(col_names)) {
+        throw IndexNotFoundError(tab_name, col_names);
+    }
+
+    auto index_it = tab.get_index_meta(col_names);
+    std::vector<ColMeta> index_cols = index_it->cols;
+    std::string index_name = ix_manager_->get_index_name(tab_name, index_cols);
+    auto ih_it = ihs_.find(index_name);
+    if (ih_it != ihs_.end()) {
+        // 关闭已打开的索引文件句柄，避免文件被占用
+        ix_manager_->close_index(ih_it->second.get());
+        ihs_.erase(ih_it);
+    }
+    ix_manager_->destroy_index(tab_name, index_cols);
+    tab.indexes.erase(index_it);
+
+    // 重新计算字段的 index 标记
+    for (auto &col : tab.cols) {
+        col.index = false;
+    }
+    for (const auto &index_meta : tab.indexes) {
+        for (const auto &col : index_meta.cols) {
+            tab.get_col(col.name)->index = true;
+        }
+    }
+
+    flush_meta();
 }
 
 /**
@@ -218,5 +296,11 @@ void SmManager::drop_index(const std::string& tab_name, const std::vector<std::s
  * @param {Context*} context
  */
 void SmManager::drop_index(const std::string& tab_name, const std::vector<ColMeta>& cols, Context* context) {
-    
+    std::vector<std::string> col_names;
+    col_names.reserve(cols.size());
+    for (const auto &col : cols) {
+        col_names.push_back(col.name);
+    }
+    // 复用按列名删除的逻辑
+    drop_index(tab_name, col_names, context);
 }
